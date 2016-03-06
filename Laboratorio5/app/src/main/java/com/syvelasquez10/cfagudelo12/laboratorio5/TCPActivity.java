@@ -6,10 +6,12 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
+import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.text.format.Formatter;
 import android.view.View;
 import android.widget.Button;
 
@@ -39,19 +41,19 @@ public class TCPActivity extends AppCompatActivity implements
 
     private Location mLastLocation;
 
-    private String latitude;
+    public static String latitude;
 
-    private String longitude;
+    public static String longitude;
 
-    private String altitude;
+    public static String altitude;
 
-    private String speed;
+    public static String speed;
 
-    private boolean mRequestingLocationUpdates;
+    public static boolean mRequestingLocationUpdates;
 
-    private boolean backEnabled;
+    public static boolean backEnabled;
 
-    private TCPCommunicationTask tcpTask;
+    private int id;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +67,7 @@ public class TCPActivity extends AppCompatActivity implements
                 .build();
 
         backEnabled=true;
+        id=0;
 
         Button startButton = (Button) findViewById(R.id.tcpStart);
         startButton.setOnClickListener(new View.OnClickListener() {
@@ -128,8 +131,10 @@ public class TCPActivity extends AppCompatActivity implements
     public void start() {
         mRequestingLocationUpdates = true;
         backEnabled = false;
-        tcpTask = new TCPCommunicationTask();
-        tcpTask.execute();
+        WifiManager wm = (WifiManager) getSystemService(WIFI_SERVICE);
+        String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
+        id ++;
+        new TCPThread(id, ip).start();
     }
 
     public void stop() {
@@ -211,56 +216,5 @@ public class TCPActivity extends AppCompatActivity implements
     @Override
     public void onConnectionSuspended(int i) {
 
-    }
-
-    public class TCPCommunicationTask extends AsyncTask<Void, Void, Void> {
-
-        private final String IP = "192.168.0.5";
-
-        private final int PORT = 8080;
-
-        private PrintWriter escritor;
-
-        private BufferedReader lector;
-
-        private Socket socket;
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                socket = new Socket(IP, PORT);
-                escritor = new PrintWriter(socket.getOutputStream(), true);
-                lector = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-                escritor.println("HELLO");
-                String in = lector.readLine();
-                if (!in.equals("GO")) {
-                    mRequestingLocationUpdates = false;
-                    AlertDialog alertDialog = new AlertDialog.Builder(TCPActivity.this).create();
-                    alertDialog.setTitle("Alerta");
-                    alertDialog.setMessage("No se logró conexión con el servidor");
-                    alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "OK",
-                            new DialogInterface.OnClickListener() {
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.dismiss();
-                                }
-                            });
-                    alertDialog.show();
-                    return null;
-                }
-                while (mRequestingLocationUpdates) {
-                    Thread.sleep(1000);
-                    escritor.println( latitude + "," + longitude + "," + altitude + "," + speed);
-                }
-                escritor.println("STOP");
-                escritor.close();
-                lector.close();
-                backEnabled=true;
-            } catch (Exception e) {
-                backEnabled=true;
-                System.err.println("Exception: " + e.getMessage());
-                System.exit(1);
-            }
-            return null;
-        }
     }
 }

@@ -35,19 +35,17 @@ public class UDPActivity extends AppCompatActivity implements GoogleApiClient.Co
 
     private Location mLastLocation;
 
-    private String latitude;
+    public static String latitude;
 
-    private String longitude;
+    public static String longitude;
 
-    private String altitude;
+    public static String altitude;
 
-    private String speed;
+    public static String speed;
 
-    private boolean mRequestingLocationUpdates;
+    public static boolean mRequestingLocationUpdates;
 
     private int id;
-
-    private UDPCommunicationTask udpTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -123,8 +121,11 @@ public class UDPActivity extends AppCompatActivity implements GoogleApiClient.Co
 
     public void start() {
         mRequestingLocationUpdates = true;
-        udpTask = new UDPCommunicationTask();
-        udpTask.execute();
+        id++;
+        WifiManager wm = (WifiManager) getSystemService(WIFI_SERVICE);
+        String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
+        new UDPThread(id, ip).start();
+        //new UDPCommunicationTask().execute();
     }
 
     public void stop() {
@@ -192,37 +193,6 @@ public class UDPActivity extends AppCompatActivity implements GoogleApiClient.Co
     @Override
     public void onConnectionSuspended(int i) {
 
-    }
-
-    public class UDPCommunicationTask extends AsyncTask<Void, Void, Void> {
-
-        private final String IP = "192.168.0.5";
-
-        private final int PORT = 9000;
-
-        private DatagramSocket socket;
-
-        @Override
-        protected Void doInBackground(Void... params) {
-            try {
-                WifiManager wm = (WifiManager) getSystemService(WIFI_SERVICE);
-                String ip = Formatter.formatIpAddress(wm.getConnectionInfo().getIpAddress());
-                socket = new DatagramSocket();
-                InetAddress IPAddress = InetAddress.getByName(IP);
-                while (mRequestingLocationUpdates) {
-                    Thread.sleep(1000);
-                    String message = ip+","+ latitude + "," + longitude + "," + altitude + "," + speed;
-                    byte[] sendData = message.getBytes();
-                    DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, IPAddress, PORT);
-                    socket.send(sendPacket);
-                }
-                socket.close();
-            } catch (Exception e) {
-                System.err.println("Exception: " + e.getMessage());
-                System.exit(1);
-            }
-            return null;
-        }
     }
 }
 
